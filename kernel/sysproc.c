@@ -75,6 +75,28 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 fva, uva; //这里fva需要对齐吗
+  int num;
+  uint64 abits = 0; //结果
+  
+  argaddr(0, &fva);
+  argint(1, &num);
+  argaddr(2, &uva);
+  
+  if(num < 0 || num > 64) return -1;
+  //思考：找到当前页表地址
+  pagetable_t pagetable = myproc()->pagetable;
+  uint64 va = fva; 
+  for(int i = 0; i < num; i++, va += PGSIZE){
+    //依次访问虚拟地址
+    pte_t *pte = walk(pagetable, va, 0); //获得叶子
+    if(pte == 0) return -1;
+    if(*pte & PTE_A){
+      abits |= (1 << i); // 记录位
+      *pte = (*pte) & (~PTE_A);
+    }
+  }
+  if(copyout(pagetable, uva, (char*)&abits, sizeof(abits))<0) return -1; ///
   return 0;
 }
 #endif
