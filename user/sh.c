@@ -158,6 +158,10 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
+	  //unsigned int i = 0x00646c72;/////
+	  //printf("x=%d y=%d", 3); /////
+	  //printf("H%x Wo%s", 57616, &i);/////
+
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n

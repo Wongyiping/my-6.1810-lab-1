@@ -123,6 +123,7 @@ panic(char *s)
   printf(s);
   printf("\n");
   panicked = 1; // freeze uart output from other CPUs
+  backtrace();
   for(;;)
     ;
 }
@@ -132,4 +133,18 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+void
+backtrace(void)
+{
+  uint64 fp, pre_fp;
+  printf("backtrace:\n");
+  pre_fp = r_fp(); //当前栈底
+  do{
+    fp = pre_fp; 
+    pre_fp = *((uint64 *)(fp - 16));//上一个栈帧的栈底 
+    printf("%p\n", *((uint64 *)(fp - 8))); //输出的是返回地址
+  }
+  while(PGROUNDDOWN(fp) == PGROUNDDOWN(pre_fp));
 }
