@@ -23,10 +23,29 @@ struct {
   struct run *freelist;
 } kmem;
 
+static int ref_counter[PHYSTOP/PGSIZE]; //初始化引用计数数组，求可分配的内存块数，发现是32734
+
+static int pa2idx(uint64 pa) {
+  return pa / PGSIZE;
+}
+
+void ref_add(uint64 pa){
+  ref_counter[pa2idx(pa)]++;
+}
+
+void ref_sub(uint64 pa){
+  ref_counter[pa2idx(pa)]--;
+}
+
+int ref_get(uint64 pa){
+  return ref_counter[pa2idx(pa)];
+}//add
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  memset(ref_counter, 0, sizeof(ref_counter)); //注意此语句的位置
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -51,6 +70,10 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
+  if(ref_counter[pa2idx((uint64)pa)] > 1){
+    ref_sub((uint64)pa);
+    return;
+  }//add
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
@@ -60,6 +83,7 @@ kfree(void *pa)
   r->next = kmem.freelist;
   kmem.freelist = r;
   release(&kmem.lock);
+  ref_counter[pa2idx((uint64)pa)] = 0; //
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -78,5 +102,9 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+  
+  if(r)//add
+    ref_counter[pa2idx((uint64)r)] = 1;
+
   return (void*)r;
 }
